@@ -3,7 +3,6 @@ import sys
 import pickle
 import os
 
-
 def filtra_palavras_documentos(conteudo_arquivo):
     palavras = nltk.word_tokenize(conteudo_arquivo)
     palavras = list(filter(
@@ -18,8 +17,11 @@ def filtra_palavras_documentos(conteudo_arquivo):
 def grava_indice(indice_invertido):
     with open('indice.txt', 'w') as reader:
         for radical in indice_invertido:
-            reader.writelines(f"{radical}: {indice_invertido[radical]}\n")
-
+            line = ""
+            for numero_arquivo in indice_invertido[radical]:
+                line = line + \
+                    f"{numero_arquivo},{indice_invertido[radical][numero_arquivo]} "
+            reader.writelines(f"{radical}: {line}\n")
 
 if (len(sys.argv) <= 1):
     print('Arquivo base não encontrado')
@@ -76,9 +78,9 @@ for file in arquivos_base:
 
     for radical in radicais_arquivo:
         if radical in indice_invertido:
-            indice_invertido[radical] = indice_invertido[radical] + \
-                f"{numero_arquivo},{radicais_arquivo[radical]} "
+            indice_invertido[radical][numero_arquivo] = radicais_arquivo[radical]
         else:
-            indice_invertido[radical] = f"{numero_arquivo},{radicais_arquivo[radical]} "
+            indice_invertido[radical] = {
+                numero_arquivo: radicais_arquivo[radical]}
 
 grava_indice(indice_invertido)
