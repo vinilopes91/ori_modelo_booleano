@@ -3,6 +3,7 @@ import sys
 import pickle
 import os
 
+
 def filtra_palavras_documentos(conteudo_arquivo):
     palavras = nltk.word_tokenize(conteudo_arquivo)
     palavras = list(filter(
@@ -23,11 +24,13 @@ def grava_indice(indice_invertido):
                     f"{numero_arquivo},{indice_invertido[radical][numero_arquivo]} "
             reader.writelines(f"{radical}: {line}\n")
 
+
 def grava_resultado_consulta(resultado_consulta):
     with open('resposta.txt', 'w') as reader:
         reader.writelines(f"{resultado_consulta['total']}\n")
         for nome_arquivo in resultado_consulta["arquivos"]:
             reader.writelines(f"{nome_arquivo}\n")
+
 
 def busca_numero_arquivos_por_palavra(indice_invertido, stemmer, numero_arquivos, palavra):
     arquivos = set()
@@ -44,6 +47,7 @@ def busca_numero_arquivos_por_palavra(indice_invertido, stemmer, numero_arquivos
 
     return arquivos
 
+
 def executa_consulta(consulta, indice_invertido, arquivos_base):
     stemmer = nltk.stem.RSLPStemmer()
     termos = consulta.split()
@@ -52,17 +56,37 @@ def executa_consulta(consulta, indice_invertido, arquivos_base):
 
     if len(termos) == 1:
         palavra = termos[0]
-        arquivos = busca_numero_arquivos_por_palavra(indice_invertido, stemmer, numero_arquivos, palavra)
+        arquivos = busca_numero_arquivos_por_palavra(
+            indice_invertido, stemmer, numero_arquivos, palavra)
     else:
-        ## Conjunção
+        ## Conjunção | Conjunções
         for index, palavra_subconsulta in enumerate(termos):
-            if (index % 2 == 0): # index par = palavras / index impar = conjunção
+            if (index % 2 == 0):  # index par = palavras / index impar = conjunção
                 if (index == 0):
-                    arquivos = busca_numero_arquivos_por_palavra(indice_invertido, stemmer, numero_arquivos, palavra_subconsulta)
+                    arquivos = busca_numero_arquivos_por_palavra(
+                        indice_invertido, stemmer, numero_arquivos, palavra_subconsulta)
                 else:
-                    arquivos = arquivos.intersection(busca_numero_arquivos_por_palavra(indice_invertido, stemmer, numero_arquivos, palavra_subconsulta))
+                    arquivos = arquivos.intersection(busca_numero_arquivos_por_palavra(
+                        indice_invertido, stemmer, numero_arquivos, palavra_subconsulta))
 
     return arquivos
+
+
+def executa_modelo_booleano(executa_consulta, subconsultas, arquivos_base, indice_invertido, resultado_consulta):
+    resultado_numero_arquivos_consulta = set()
+
+    for consulta in subconsultas:
+        conjunto_documentos = executa_consulta(
+            consulta, indice_invertido, arquivos_base)
+        resultado_numero_arquivos_consulta = resultado_numero_arquivos_consulta.union(
+            conjunto_documentos)
+
+    resultado_consulta['total'] = len(resultado_numero_arquivos_consulta)
+
+    for numero_arquivo in resultado_numero_arquivos_consulta:
+        resultado_consulta['arquivos'].append(
+            arquivos_base[numero_arquivo - 1])
+
 
 if (len(sys.argv) <= 1):
     print('Arquivo base não encontrado')
@@ -114,7 +138,7 @@ try:
     with open(base, 'r') as reader:
         arquivos_base = [file_name.strip() for file_name in reader.readlines()]
 except EnvironmentError:
-    print ("Arquivo base não encontrado.")
+    print("Arquivo base não encontrado.")
     sys.exit()
 
 # Lê o arquivo_consulta
@@ -123,7 +147,7 @@ try:
         consulta = reader.readline().strip()
         subconsultas = consulta.split(" | ")
 except EnvironmentError:
-    print ("Arquivo consulta não encontrado.")
+    print("Arquivo consulta não encontrado.")
     sys.exit()
 
 for file in arquivos_base:
@@ -141,7 +165,7 @@ for file in arquivos_base:
                 else:
                     radicais_arquivo[radical] = 1
     except EnvironmentError:
-        print ("Arquivo %s não encontrado."%file)
+        print("Arquivo %s não encontrado." % file)
         sys.exit()
 
     for radical in radicais_arquivo:
@@ -153,15 +177,7 @@ for file in arquivos_base:
 
 grava_indice(indice_invertido)
 
-resultado_numero_arquivos_consulta = set()
-
-for consulta in subconsultas:
-    conjunto_documentos = executa_consulta(consulta, indice_invertido, arquivos_base)
-    resultado_numero_arquivos_consulta = resultado_numero_arquivos_consulta.union(conjunto_documentos)
-
-resultado_consulta['total'] = len(resultado_numero_arquivos_consulta)
-
-for numero_arquivo in resultado_numero_arquivos_consulta:
-    resultado_consulta['arquivos'].append(arquivos_base[numero_arquivo - 1])
+executa_modelo_booleano(executa_consulta, subconsultas,
+                        arquivos_base, indice_invertido, resultado_consulta)
 
 grava_resultado_consulta(resultado_consulta)
